@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenFileShield | Admin Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="shell admin-shell">
+      <header class="hero">
+        <p class="eyebrow">SECURITY OPERATIONS</p>
+        <h1>OpenFileShield Admin</h1>
+        <p class="subtitle">Monitor uploads, investigate abuse patterns, and export audit trails.</p>
+      </header>
+
+      <section class="panel glass">
+        <div class="admin-auth-row">
+          <label>
+            Admin token
+            <input id="admin-token" type="password" placeholder="x-admin-token" />
+          </label>
+          <button id="save-token" type="button">Save token</button>
+          <button id="load-dashboard" type="button">Load dashboard</button>
+        </div>
+
+        <div id="stats" class="stats-grid"></div>
+
+        <div class="filters">
+          <label>
+            Status
+            <select id="filter-status">
+              <option value="">All</option>
+              <option value="stored">Stored</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </label>
+          <label>
+            Filename contains
+            <input id="filter-q" type="text" placeholder="invoice, photo, archive..." />
+          </label>
+          <label>
+            IP
+            <input id="filter-ip" type="text" placeholder="203.0.113.10" />
+          </label>
+          <label>
+            Limit
+            <input id="filter-limit" type="number" min="1" max="500" value="100" />
+          </label>
+        </div>
+
+        <div class="admin-actions">
+          <button id="search-btn" type="button">Search</button>
+          <button id="csv-btn" type="button">Export CSV</button>
+        </div>
+
+        <div class="table-wrap">
+          <table id="uploads-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Time</th>
+                <th>File</th>
+                <th>Status</th>
+                <th>Scan</th>
+                <th>Size</th>
+                <th>IP</th>
+                <th>Fingerprint</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <pre id="admin-result" aria-live="polite"></pre>
+      </section>
+
+      <footer class="footer-links">
+        <a href="/">Back to upload page</a>
+      </footer>
+    </main>
+
+    <script src="/static/admin.js"></script>
+  </body>
+</html>

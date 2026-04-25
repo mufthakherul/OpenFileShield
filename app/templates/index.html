@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenFileShield | Public Upload</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <p class="eyebrow">OPEN INTAKE PORTAL</p>
+        <h1>OpenFileShield</h1>
+        <p class="subtitle">Free and public upload for all file types, with open-source malware scanning and forensic-ready audit logging.</p>
+      </header>
+
+      <section class="panel glass">
+        <div class="meta-row">
+          <span class="chip">All file types supported</span>
+          <span class="chip">Max size: {{ max_file_mb }} MB</span>
+          <span class="chip">No sign in required</span>
+        </div>
+
+        <div class="notice">{{ service_notice }}</div>
+
+        <form id="upload-form" class="form-grid">
+          <label>
+            Optional name
+            <input type="text" name="uploader_name" placeholder="Your display name" />
+          </label>
+
+          <label>
+            Optional email
+            <input type="email" name="uploader_email" placeholder="you@example.com" />
+          </label>
+
+          <label class="drop-zone" for="file-input" id="drop-zone">
+            <input type="file" name="file" id="file-input" required />
+            <span class="drop-title">Drop a file here or click to browse</span>
+            <span class="drop-sub">Any extension is accepted. Malware scan runs before storage.</span>
+            <span id="file-name" class="file-name"></span>
+          </label>
+
+          <label class="check">
+            <input type="checkbox" name="consent" required />
+            I consent to threat scanning and uploader metadata logging.
+          </label>
+
+          <button type="submit" id="submit-btn">Scan and Upload</button>
+        </form>
+
+        <pre id="result" aria-live="polite"></pre>
+      </section>
+
+      <footer class="footer-links">
+        <a href="/admin">Admin console</a>
+        <a href="/api/health" target="_blank" rel="noreferrer">Health API</a>
+      </footer>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

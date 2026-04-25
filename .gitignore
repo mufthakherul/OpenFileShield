@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.db
+.env
+.venv/
+.pytest_cache/
+.mypy_cache/
+.vscode/
+data/uploads/*
+data/quarantine/*
+!data/uploads/.gitkeep
+!data/quarantine/.gitkeep

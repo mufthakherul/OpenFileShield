@@ -1,0 +1,12 @@
+[project]
+name = "openfileshield"
+version = "0.1.0"
+description = "Open-source public file upload service with antivirus scanning and metadata audit logging"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100

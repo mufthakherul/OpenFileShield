@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    container_name: openfileshield-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - clamav
+    volumes:
+      - ./data:/app/data
+
+  clamav:
+    image: clamav/clamav:latest
+    container_name: openfileshield-clamav
+    restart: unless-stopped
+    ports:
+      - "3310:3310"
