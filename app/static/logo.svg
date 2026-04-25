@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-label="OpenFileShield logo">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#03e9ba"/>
+      <stop offset="100%" stop-color="#00b791"/>
+    </linearGradient>
+    <linearGradient id="lockGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#b8fff0" stop-opacity="0.85"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Shield body -->
+  <path d="M32 4 L54 13 L54 30 C54 43 43 54 32 60 C21 54 10 43 10 30 L10 13 Z" fill="url(#shieldGrad)" filter="url(#glow)"/>
+  <!-- Shield inner highlight -->
+  <path d="M32 9 L50 16.5 L50 30 C50 41 41 50.5 32 56 C23 50.5 14 41 14 30 L14 16.5 Z" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+  <!-- Lock shackle -->
+  <path d="M24 28 L24 24 C24 19.6 28 16 32 16 C36 16 40 19.6 40 24 L40 28" stroke="url(#lockGrad)" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <!-- Lock body -->
+  <rect x="22" y="27" width="20" height="15" rx="3" fill="url(#lockGrad)"/>
+  <!-- Lock keyhole -->
+  <circle cx="32" cy="33" r="2.5" fill="#063a31"/>
+  <rect x="30.5" y="33" width="3" height="4" rx="1" fill="#063a31"/>
+</svg>

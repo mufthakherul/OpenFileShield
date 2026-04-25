@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master", "develop"]
+  pull_request:
+    branches: ["main", "master", "develop"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ruff + mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt ruff mypy
+
+      - name: Ruff lint
+        run: ruff check . --extend-ignore=E501
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+  test:
+    name: Tests (pytest + playwright)
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      clamav:
+        image: clamav/clamav:stable
+        ports:
+          - 3310:3310
+        options: >-
+          --health-cmd "clamdcheck"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pytest pytest-asyncio httpx
+
+      - name: Install Node dependencies
+        run: pnpm install
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run pytest
+        run: pytest tests/ -v --tb=short
+        env:
+          DATABASE_URL: "sqlite:///./data/test.db"
+          CLAMD_HOST: "127.0.0.1"
+
+      - name: Run Playwright e2e tests
+        run: pnpm exec playwright test
+        env:
+          DATABASE_URL: "sqlite:///./data/test.db"
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
