@@ -4,6 +4,7 @@ const dropZone = document.querySelector("#drop-zone");
 const fileInput = document.querySelector("#file-input");
 const fileName = document.querySelector("#file-name");
 const submitBtn = document.querySelector("#submit-btn");
+const scanModeInput = document.querySelector("#scan-mode");
 
 function setFileName() {
   const file = fileInput.files[0];
@@ -39,9 +40,11 @@ form.addEventListener("submit", async (event) => {
 
   const formData = new FormData(form);
   formData.set("consent", formData.get("consent") ? "true" : "false");
+  const endpoint = scanModeInput?.value === "async" ? "/api/upload/async" : "/api/upload";
+  formData.delete("scan_mode");
 
   try {
-    const response = await fetch("/api/upload", {
+    const response = await fetch(endpoint, {
       method: "POST",
       body: formData,
     });

@@ -52,6 +52,14 @@
             I consent to threat scanning and uploader metadata logging.
           </label>
 
+          <label>
+            Scan mode
+            <select name="scan_mode" id="scan-mode">
+              <option value="sync" selected>Sync (wait for scan result)</option>
+              <option value="async">Async queue (faster response)</option>
+            </select>
+          </label>
+
           <button type="submit" id="submit-btn">Scan and Upload</button>
         </form>
 

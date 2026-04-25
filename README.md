@@ -8,7 +8,9 @@ Anyone can upload any file type without sign in, while the service performs fast
 - Open public upload endpoint with no sign in or registration
 - All file types supported (no extension allowlist)
 - Threat scanning through open-source ClamAV
+- Optional async upload queue endpoint for faster user response (`/api/upload/async`)
 - Quarantine-first upload pipeline
+- SHA256 deduplication mode to avoid duplicate physical storage
 - Advanced metadata capture for investigation:
   - IP address
   - User-Agent
@@ -19,6 +21,7 @@ Anyone can upload any file type without sign in, while the service performs fast
 - SHA256 hash for each upload
 - Admin console at `/admin`
 - Admin APIs with filtering and CSV export
+- Time-series trend API for dashboard charts (`/api/trends`)
 - Rate limiting and burst control against abuse
 
 ## Architecture At A Glance
@@ -35,7 +38,9 @@ Anyone can upload any file type without sign in, while the service performs fast
 - Dashboard stats (`/api/stats`)
 - Search and filter (`/api/uploads`)
 - CSV export (`/api/uploads/export.csv`)
+- Trend chart feed (`/api/trends?days=14`)
 - Admin token protection via `x-admin-token`
+- Live auto-refresh dashboard controls
 
 ## Local Start
 
@@ -68,8 +73,13 @@ Tune behavior in `.env`:
 - `MAX_FILE_SIZE_MB`
 - `UPLOAD_RATE_LIMIT_PER_MINUTE`
 - `UPLOAD_RATE_BURST_PER_10_SECONDS`
+- `DEDUPE_MODE`
+- `ASYNC_SCAN_ENABLED`
+- `ASYNC_SCAN_WORKERS`
+- `TREND_DAYS_DEFAULT`
 - `SCAN_REQUIRED`
 - `ENABLE_CSV_EXPORT`
+- `ADMIN_AUTO_REFRESH_SECONDS`
 - `SERVICE_NOTICE`
 
 ## Public Global Access From Personal PC

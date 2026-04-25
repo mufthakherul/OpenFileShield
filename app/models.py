@@ -20,6 +20,8 @@ class UploadRecord(Base):
     scan_result: Mapped[str] = mapped_column(String(255), nullable=False)
     request_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     processing_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    scan_engine: Mapped[str] = mapped_column(String(64), nullable=False, default="clamav")
+    dedupe_of_id: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
 
     uploader_ip: Mapped[str] = mapped_column(String(128), nullable=False)
     user_agent: Mapped[str] = mapped_column(Text, nullable=False)

@@ -203,9 +203,37 @@ button:disabled {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0.65rem;
   margin: 0.8rem 0;
+}
+
+.trend-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.7rem;
+  margin: 0.8rem 0;
+}
+
+.trend-header {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trend-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+#trend-chart {
+  width: 100%;
+  height: 280px;
+  display: block;
+  border-radius: 10px;
+  margin-top: 0.5rem;
 }
 
 .stat {
