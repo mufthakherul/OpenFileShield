@@ -21,14 +21,14 @@
       </header>
 
       <section class="panel glass" id="admin-root" data-refresh-seconds="{{ admin_auto_refresh_seconds }}" data-trend-days="{{ trend_days_default }}">
-        <div class="admin-auth-row">
+        <form class="admin-auth-row" id="admin-auth-form">
           <label>
             Admin token
-            <input id="admin-token" type="password" placeholder="x-admin-token" />
+            <input id="admin-token" type="password" placeholder="x-admin-token" autocomplete="current-password" />
           </label>
           <button id="save-token" type="button">Save token</button>
           <button id="load-dashboard" type="button">Load dashboard</button>
-        </div>
+        </form>
 
         <div id="stats" class="stats-grid"></div>
 

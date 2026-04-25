@@ -1,14 +1,39 @@
 services:
-  app:
+  app-public:
     build: .
-    container_name: openfileshield-app
+    container_name: openfileshield-app-public
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      APP_ROLE: public
+      APP_PORT: 8080
+      ADMIN_BASE_URL: ${ADMIN_BASE_URL:-http://127.0.0.1:8081}
     ports:
       - "8080:8080"
     depends_on:
-      - clamav
+      clamav:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+
+  app-admin:
+    build: .
+    container_name: openfileshield-app-admin
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8081"]
+    environment:
+      APP_ROLE: admin
+      APP_PORT: 8081
+      ADMIN_LOCAL_ONLY: true
+      TRUST_X_FORWARDED_FOR: true
+    ports:
+      - "8081:8081"
+    depends_on:
+      clamav:
+        condition: service_healthy
     volumes:
       - ./data:/app/data
 
@@ -18,3 +43,30 @@ services:
     restart: unless-stopped
     ports:
       - "3310:3310"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z localhost 3310"]
+      interval: 30s
+      timeout: 5s
+      retries: 8
+
+  edge:
+    image: caddy:2
+    container_name: openfileshield-edge
+    restart: unless-stopped
+    profiles: ["edge"]
+    env_file:
+      - .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - edge_data:/data
+      - edge_config:/config
+    depends_on:
+      - app-public
+      - app-admin
+
+volumes:
+  edge_data:
+  edge_config:

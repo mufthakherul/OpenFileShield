@@ -1,0 +1,15 @@
+{
+  email {$ACME_EMAIL}
+}
+
+{$PUBLIC_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy app-public:8080
+}
+
+{$ADMIN_DOMAIN} {
+  @nonlocal not remote_ip private_ranges
+  respond @nonlocal "Forbidden" 403
+  encode zstd gzip
+  reverse_proxy app-admin:8081
+}

@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     app_name: str = "OpenFileShield"
     app_host: str = "0.0.0.0"
     app_port: int = 8080
+    app_role: str = "all"
+    public_port: int = 8080
+    admin_port: int = 8081
+    admin_host: str = "127.0.0.1"
+    admin_base_url: str = "http://127.0.0.1:8081"
 
     database_url: str = "sqlite:///./data/openfileshield.db"
     upload_dir: str = "./data/uploads"
@@ -28,6 +33,7 @@ class Settings(BaseSettings):
 
     trust_x_forwarded_for: bool = True
     admin_token: str = "change-this-token"
+    admin_local_only: bool = True
     max_admin_results: int = 500
     default_admin_results: int = 100
     enable_csv_export: bool = True

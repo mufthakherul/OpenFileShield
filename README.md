@@ -48,8 +48,24 @@ Anyone can upload any file type without sign in, while the service performs fast
 
 ```bash
 copy .env.example .env
-docker compose up --build
+docker compose up --build -d
 ```
+
+Default Docker URLs:
+
+- Public uploader: http://localhost:8080/
+- Admin console: http://localhost:8081/
+
+In Docker mode the stack runs as split services (`app-public` and `app-admin`).
+Admin access is still restricted by app-level local/private network checks.
+
+Optional edge proxy profile:
+
+```bash
+docker compose --profile edge up --build -d
+```
+
+This enables Caddy with host-based routing from `PUBLIC_DOMAIN` and `ADMIN_DOMAIN`.
 
 ### Option B: Pure Python
 
@@ -66,6 +82,21 @@ Open:
 - Upload UI: http://localhost:8080/
 - Admin UI: http://localhost:8080/admin
 
+### Option C: Split Public/Admin Ports (recommended for production)
+
+Run separate instances so uploader traffic is public while admin remains local-only:
+
+```bash
+python -m app.run_dual
+```
+
+Default URLs:
+
+- Public uploader: http://localhost:8080/
+- Admin console: http://127.0.0.1:8081/
+
+This mode sets app roles per process (`public` and `admin`) and enforces local/private network access for admin endpoints.
+
 ## Customization
 
 Tune behavior in `.env`:
@@ -81,12 +112,32 @@ Tune behavior in `.env`:
 - `ENABLE_CSV_EXPORT`
 - `ADMIN_AUTO_REFRESH_SECONDS`
 - `SERVICE_NOTICE`
+- `APP_ROLE`
+- `ADMIN_LOCAL_ONLY`
+- `PUBLIC_DOMAIN`
+- `ADMIN_DOMAIN`
+- `ACME_EMAIL`
+
+## Automated E2E Tests (Playwright + TypeScript)
+
+```bash
+pnpm install
+pnpm e2e:install
+pnpm e2e:test
+```
+
+Optional environment overrides:
+
+- `PUBLIC_BASE_URL` (default `http://127.0.0.1:8080`)
+- `ADMIN_BASE_URL` (default `http://127.0.0.1:8081`)
+- `ADMIN_TOKEN` (default `change-this-token`)
 
 ## Public Global Access From Personal PC
 
 Use Cloudflare Tunnel, reverse proxy, or ngrok. Full guide:
 
 - [docs/DEPLOY_PERSONAL_PC.md](docs/DEPLOY_PERSONAL_PC.md)
+- [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)
 
 ## Compliance Notes
 

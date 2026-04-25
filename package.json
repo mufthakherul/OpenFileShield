@@ -1,0 +1,15 @@
+{
+  "name": "openfileshield-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Playwright E2E automation for OpenFileShield",
+  "scripts": {
+    "e2e:install": "playwright install chromium",
+    "e2e:test": "playwright test",
+    "e2e:test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.0",
+    "typescript": "^5.8.3"
+  }
+}

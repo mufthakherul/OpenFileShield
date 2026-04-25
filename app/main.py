@@ -1,5 +1,6 @@
 import csv
 import hashlib
+import ipaddress
 import io
 import os
 import queue
@@ -7,12 +8,13 @@ import shutil
 import threading
 import time
 import uuid
+from contextlib import asynccontextmanager
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import text
@@ -24,7 +26,27 @@ from .models import UploadRecord
 from .scanner import scanner
 from .schemas import HealthResponse, TrendPoint, UploadResponse, UploadStatsResponse
 
-app = FastAPI(title=settings.app_name, version="0.3.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+    Path(settings.quarantine_dir).mkdir(parents=True, exist_ok=True)
+    Base.metadata.create_all(bind=engine)
+    ensure_sqlite_columns()
+
+    if settings.async_scan_enabled:
+        for idx in range(settings.async_scan_workers):
+            thread = threading.Thread(target=queue_worker, args=(idx,), daemon=True)
+            thread.start()
+            workers.append(thread)
+
+    yield
+
+    stop_event.set()
+    for _ in workers:
+        scan_queue.put(None)
+
+
+app = FastAPI(title=settings.app_name, version="0.3.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
@@ -57,6 +79,22 @@ limiter = InMemoryRateLimiter()
 scan_queue: queue.Queue[dict | None] = queue.Queue()
 stop_event = threading.Event()
 workers: list[threading.Thread] = []
+
+ADMIN_PATH_PREFIXES = (
+    "/admin",
+    "/api/stats",
+    "/api/trends",
+    "/api/upload/",
+    "/api/uploads",
+)
+PUBLIC_PATH_PREFIXES = (
+    "/",
+    "/api/health",
+    "/api/upload",
+    "/api/upload/async",
+    "/static",
+    "/favicon.ico",
+)
 
 
 def ensure_sqlite_columns() -> None:
@@ -110,6 +148,30 @@ def save_stream_to_file(upload_file: UploadFile, output_path: str) -> tuple[int,
 def ensure_admin(x_admin_token: str | None) -> None:
     if not x_admin_token or x_admin_token != settings.admin_token:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+def is_admin_path(path: str) -> bool:
+    return any(path == prefix or path.startswith(prefix) for prefix in ADMIN_PATH_PREFIXES)
+
+
+def is_public_path(path: str) -> bool:
+    return any(path == prefix or path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES)
+
+
+def is_local_or_private_ip(value: str) -> bool:
+    try:
+        ip_addr = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return ip_addr.is_loopback or ip_addr.is_private
+
+
+def ensure_local_admin_access(request: Request) -> None:
+    if not settings.admin_local_only:
+        return
+    client_ip = get_client_ip(request)
+    if not is_local_or_private_ip(client_ip):
+        raise HTTPException(status_code=403, detail="Admin access is limited to local/private networks")
 
 
 def build_upload_record_payload(row: UploadRecord) -> dict:
@@ -269,44 +331,57 @@ def queue_worker(worker_id: int) -> None:
             scan_queue.task_done()
 
 
-@app.on_event("startup")
-def startup() -> None:
-    Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
-    Path(settings.quarantine_dir).mkdir(parents=True, exist_ok=True)
-    Base.metadata.create_all(bind=engine)
-    ensure_sqlite_columns()
+@app.middleware("http")
+async def app_role_guard(request: Request, call_next):
+    path = request.url.path
+    role = settings.app_role.lower()
 
-    if settings.async_scan_enabled:
-        for idx in range(settings.async_scan_workers):
-            thread = threading.Thread(target=queue_worker, args=(idx,), daemon=True)
-            thread.start()
-            workers.append(thread)
+    if role == "public" and is_admin_path(path):
+        return Response(status_code=404)
+    if role == "admin" and not is_admin_path(path) and not is_public_path(path):
+        return Response(status_code=404)
+    if role == "admin" and is_admin_path(path):
+        try:
+            ensure_local_admin_access(request)
+        except HTTPException as exc:
+            return Response(content=exc.detail, status_code=exc.status_code)
 
-
-@app.on_event("shutdown")
-def shutdown() -> None:
-    stop_event.set()
-    for _ in workers:
-        scan_queue.put(None)
+    return await call_next(request)
 
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
+    if settings.app_role.lower() == "admin":
+        ensure_local_admin_access(request)
+        return templates.TemplateResponse(
+            request=request,
+            name="admin.html",
+            context={
+                "request": request,
+                "admin_auto_refresh_seconds": settings.admin_auto_refresh_seconds,
+                "trend_days_default": settings.trend_days_default,
+            },
+        )
+
     return templates.TemplateResponse(
-        "index.html",
-        {
+        request=request,
+        name="index.html",
+        context={
             "request": request,
             "max_file_mb": settings.max_file_size_mb,
             "service_notice": settings.service_notice,
+            "admin_base_url": settings.admin_base_url,
         },
     )
 
 
 @app.get("/admin", response_class=HTMLResponse)
 def admin(request: Request):
+    ensure_local_admin_access(request)
     return templates.TemplateResponse(
-        "admin.html",
-        {
+        request=request,
+        name="admin.html",
+        context={
             "request": request,
             "admin_auto_refresh_seconds": settings.admin_auto_refresh_seconds,
             "trend_days_default": settings.trend_days_default,
@@ -319,11 +394,18 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", scanner="up" if scanner.ping() else "down")
 
 
+@app.get("/favicon.ico")
+def favicon() -> Response:
+    return Response(status_code=204)
+
+
 @app.get("/api/stats", response_model=UploadStatsResponse)
 def stats(
+    request: Request,
     x_admin_token: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ) -> UploadStatsResponse:
+    ensure_local_admin_access(request)
     ensure_admin(x_admin_token)
     total = db.query(UploadRecord).count()
     stored = db.query(UploadRecord).filter(UploadRecord.upload_status == "stored").count()
@@ -342,10 +424,12 @@ def stats(
 
 @app.get("/api/trends", response_model=list[TrendPoint])
 def trends(
+    request: Request,
     days: int = Query(default=settings.trend_days_default, ge=1, le=60),
     x_admin_token: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ) -> list[TrendPoint]:
+    ensure_local_admin_access(request)
     ensure_admin(x_admin_token)
     start_day = datetime.now(UTC) - timedelta(days=days - 1)
 
@@ -555,10 +639,12 @@ def upload_file_async(
 
 @app.get("/api/upload/{upload_id}")
 def get_upload(
+    request: Request,
     upload_id: int,
     x_admin_token: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
+    ensure_local_admin_access(request)
     ensure_admin(x_admin_token)
     row = db.query(UploadRecord).filter(UploadRecord.id == upload_id).first()
     if row is None:
@@ -568,6 +654,7 @@ def get_upload(
 
 @app.get("/api/uploads")
 def list_uploads(
+    request: Request,
     status: str | None = Query(default=None),
     q: str | None = Query(default=None),
     ip: str | None = Query(default=None),
@@ -577,6 +664,7 @@ def list_uploads(
     x_admin_token: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ):
+    ensure_local_admin_access(request)
     ensure_admin(x_admin_token)
     rows = query_uploads(
         db,
@@ -592,6 +680,7 @@ def list_uploads(
 
 @app.get("/api/uploads/export.csv")
 def export_uploads_csv(
+    request: Request,
     status: str | None = Query(default=None),
     q: str | None = Query(default=None),
     ip: str | None = Query(default=None),
@@ -602,6 +691,7 @@ def export_uploads_csv(
     x_admin_token_query: str | None = Query(default=None, alias="x_admin_token"),
     db: Session = Depends(get_db),
 ):
+    ensure_local_admin_access(request)
     ensure_admin(x_admin_token or x_admin_token_query)
     if not settings.enable_csv_export:
         raise HTTPException(status_code=403, detail="CSV export disabled")

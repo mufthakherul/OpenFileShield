@@ -1,0 +1,16 @@
+.git
+.gitignore
+.venv
+__pycache__
+.pytest_cache
+.vscode
+.playwright
+node_modules
+data/uploads
+data/quarantine
+*.db
+*.sqlite
+*.sqlite3
+*.pyc
+tests
+docs

@@ -10,3 +10,4 @@ data/uploads/*
 data/quarantine/*
 !data/uploads/.gitkeep
 !data/quarantine/.gitkeep
+node_modules/

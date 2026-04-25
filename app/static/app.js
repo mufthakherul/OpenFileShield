@@ -49,13 +49,22 @@ form.addEventListener("submit", async (event) => {
       body: formData,
     });
 
-    const payload = await response.json();
+    const rawBody = await response.text();
+    let payload = null;
+    if (rawBody) {
+      try {
+        payload = JSON.parse(rawBody);
+      } catch {
+        payload = null;
+      }
+    }
+
     if (!response.ok) {
-      result.textContent = `Rejected: ${payload.detail || "Unknown error"}`;
+      result.textContent = `Rejected: ${payload?.detail || rawBody || "Unknown error"}`;
       return;
     }
 
-    result.textContent = JSON.stringify(payload, null, 2);
+    result.textContent = payload ? JSON.stringify(payload, null, 2) : rawBody || "Upload completed.";
     form.reset();
     setFileName();
   } catch (error) {
