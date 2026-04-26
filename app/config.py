@@ -16,7 +16,6 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/openfileshield.db"
     upload_dir: str = "./data/uploads"
     quarantine_dir: str = "./data/quarantine"
-    max_file_size_mb: int = 200
     allowed_file_types: str = "*"
 
     scan_required: bool = True
