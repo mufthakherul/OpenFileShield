@@ -11,3 +11,7 @@ data/quarantine/*
 !data/uploads/.gitkeep
 !data/quarantine/.gitkeep
 node_modules/
+playwright-report/
+test-results/
+public.log
+admin.log

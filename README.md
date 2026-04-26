@@ -6,6 +6,8 @@ Anyone can upload any file type without sign in, while the service performs fast
 ## Highlights
 
 - Open public upload endpoint with no sign in or registration
+- Unlimited batch uploads in one request
+- No application-level file size cap (storage capacity is the only practical limit)
 - All file types supported (no extension allowlist)
 - Threat scanning through open-source ClamAV
 - Optional async upload queue endpoint for faster user response (`/api/upload/async`)
@@ -18,6 +20,7 @@ Anyone can upload any file type without sign in, while the service performs fast
   - Referer and Origin
   - device fingerprint hash
   - optional uploader name and email
+  - optional file details/notes for the entire batch
 - SHA256 hash for each upload
 - Admin console at `/admin`
 - Admin APIs with filtering and CSV export
@@ -82,6 +85,8 @@ Open:
 - Upload UI: http://localhost:8080/
 - Admin UI: http://localhost:8080/admin
 
+The public upload form now accepts multiple files at once and includes an optional notes field for batch context.
+
 ### Option C: Split Public/Admin Ports (recommended for production)
 
 Run separate instances so uploader traffic is public while admin remains local-only:
@@ -101,7 +106,6 @@ This mode sets app roles per process (`public` and `admin`) and enforces local/p
 
 Tune behavior in `.env`:
 
-- `MAX_FILE_SIZE_MB`
 - `UPLOAD_RATE_LIMIT_PER_MINUTE`
 - `UPLOAD_RATE_BURST_PER_10_SECONDS`
 - `DEDUPE_MODE`
@@ -117,6 +121,14 @@ Tune behavior in `.env`:
 - `PUBLIC_DOMAIN`
 - `ADMIN_DOMAIN`
 - `ACME_EMAIL`
+
+## Workflows
+
+This repo now includes a GitHub Actions CI workflow at `.github/workflows/ci.yml` that runs:
+
+- Python backend tests (`pytest`)
+- Playwright E2E tests (public and admin split apps)
+- Docker compose build smoke check
 
 ## Automated E2E Tests (Playwright + TypeScript)
 
