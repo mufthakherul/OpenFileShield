@@ -1,13 +1,18 @@
 {
-  email {$ACME_EMAIL}
+  email {$ACME_EMAIL:admin@example.com}
 }
 
-{$PUBLIC_DOMAIN} {
+http:// {
   encode zstd gzip
   reverse_proxy app-public:8080
 }
 
-{$ADMIN_DOMAIN} {
+{$PUBLIC_DOMAIN:localhost} {
+  encode zstd gzip
+  reverse_proxy app-public:8080
+}
+
+{$ADMIN_DOMAIN:admin.localhost} {
   @nonlocal not remote_ip private_ranges
   respond @nonlocal "Forbidden" 403
   encode zstd gzip

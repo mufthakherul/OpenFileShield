@@ -10,7 +10,7 @@ services:
       APP_PORT: 8080
       ADMIN_BASE_URL: ${ADMIN_BASE_URL:-http://127.0.0.1:8081}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       clamav:
         condition: service_healthy
@@ -30,7 +30,7 @@ services:
       ADMIN_LOCAL_ONLY: true
       TRUST_X_FORWARDED_FOR: true
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     depends_on:
       clamav:
         condition: service_healthy
@@ -41,8 +41,8 @@ services:
     image: clamav/clamav:latest
     container_name: openfileshield-clamav
     restart: unless-stopped
-    ports:
-      - "3310:3310"
+    expose:
+      - "3310"
     healthcheck:
       test: ["CMD", "sh", "-c", "nc -z localhost 3310"]
       interval: 30s
