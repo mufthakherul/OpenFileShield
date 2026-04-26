@@ -14,7 +14,9 @@ from app.models import UploadRecord
 @pytest.fixture(autouse=True)
 def configure_test_runtime(tmp_path: Path):
     from app.config import settings
-    from app.main import scanner
+    from app.main import ensure_sqlite_columns, scanner
+    from app.models import Base
+    from app.database import engine
 
     original = {
         "upload_dir": settings.upload_dir,
@@ -36,6 +38,8 @@ def configure_test_runtime(tmp_path: Path):
 
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     Path(settings.quarantine_dir).mkdir(parents=True, exist_ok=True)
+    Base.metadata.create_all(bind=engine)
+    ensure_sqlite_columns()
 
     scanner_ping = scanner.ping
     scanner_scan_file = scanner.scan_file
@@ -72,24 +76,40 @@ def test_favicon_returns_no_content(client: TestClient):
 
 
 def test_upload_and_admin_stats_flow(client: TestClient):
-    files = {"file": ("sample.txt", io.BytesIO(b"hello"), "text/plain")}
+    files = {"files": ("sample.txt", io.BytesIO(b"hello"), "text/plain")}
     data = {
         "consent": "true",
         "uploader_name": "Tester",
         "uploader_email": "tester@example.com",
+        "uploader_notes": "Batch note",
     }
     upload_response = client.post("/api/upload", files=files, data=data)
 
     assert upload_response.status_code == 200
     body = upload_response.json()
-    assert body["upload_status"] == "stored"
-    assert body["scan_result"] == "clean"
+    assert body["total_files"] == 1
+    assert body["items"][0]["upload_status"] == "stored"
+    assert body["items"][0]["scan_result"] == "clean"
 
     stats_response = client.get("/api/stats", headers={"x-admin-token": "test-admin-token"})
     assert stats_response.status_code == 200
     stats = stats_response.json()
     assert stats["total"] == 1
     assert stats["stored"] == 1
+
+
+def test_upload_multiple_files_in_one_request(client: TestClient):
+    files = [
+        ("files", ("alpha.txt", io.BytesIO(b"alpha"), "text/plain")),
+        ("files", ("beta.txt", io.BytesIO(b"beta"), "text/plain")),
+    ]
+    response = client.post("/api/upload", files=files, data={"consent": "true"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_files"] == 2
+    assert body["stored"] == 2
+    assert [item["original_filename"] for item in body["items"]] == ["alpha.txt", "beta.txt"]
 
 
 def test_public_role_hides_admin_endpoints(client: TestClient):
