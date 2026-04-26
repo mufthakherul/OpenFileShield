@@ -24,7 +24,7 @@ from .config import settings
 from .database import Base, SessionLocal, engine, get_db
 from .models import UploadRecord
 from .scanner import scanner
-from .schemas import HealthResponse, TrendPoint, UploadResponse, UploadStatsResponse
+from .schemas import HealthResponse, TrendPoint, UploadBatchResponse, UploadResponse, UploadStatsResponse
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -107,6 +107,7 @@ def ensure_sqlite_columns() -> None:
         "device_fingerprint": "TEXT",
         "scan_engine": "TEXT DEFAULT 'clamav'",
         "dedupe_of_id": "INTEGER",
+        "uploader_notes": "TEXT",
     }
 
     with engine.connect() as conn:
@@ -197,8 +198,117 @@ def build_upload_record_payload(row: UploadRecord) -> dict:
         "device_fingerprint": row.device_fingerprint,
         "uploader_name": row.uploader_name,
         "uploader_email": row.uploader_email,
+        "uploader_notes": row.uploader_notes,
         "created_at": row.created_at,
     }
+
+
+def normalize_upload_files(
+    file: UploadFile | None,
+    files: list[UploadFile] | None,
+) -> list[UploadFile]:
+    upload_files: list[UploadFile] = []
+    if file is not None:
+        upload_files.append(file)
+    if files:
+        upload_files.extend(files)
+    return [upload_file for upload_file in upload_files if upload_file.filename]
+
+
+def build_upload_response(record: UploadRecord) -> UploadResponse:
+    return UploadResponse(
+        id=record.id,
+        request_id=record.request_id,
+        original_filename=record.original_filename,
+        sha256=record.sha256,
+        upload_status=record.upload_status,
+        scan_result=record.scan_result,
+        scan_engine=record.scan_engine,
+        dedupe_of_id=record.dedupe_of_id,
+        file_size_bytes=record.file_size_bytes,
+        processing_ms=record.processing_ms,
+        created_at=record.created_at,
+    )
+
+
+def store_upload_record(
+    db: Session,
+    *,
+    request: Request,
+    upload_file: UploadFile,
+    request_id: str,
+    started: float,
+    uploader_name: str | None,
+    uploader_email: str | None,
+    uploader_notes: str | None,
+    async_mode: bool,
+) -> UploadResponse:
+    if not upload_file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    uploader_ip = get_client_ip(request)
+    ext = Path(upload_file.filename).suffix.lower()
+    token = str(uuid.uuid4())
+    final_name = f"{token}{ext}"
+    quarantined_path = os.path.join(settings.quarantine_dir, final_name)
+
+    try:
+        size, digest = save_stream_to_file(upload_file, quarantined_path)
+    finally:
+        upload_file.file.close()
+
+    record = UploadRecord(
+        request_id=request_id,
+        original_filename=upload_file.filename,
+        saved_filename="",
+        file_size_bytes=size,
+        mime_type=upload_file.content_type or "application/octet-stream",
+        file_extension=ext,
+        sha256=digest,
+        upload_status="queued" if async_mode else "processing",
+        scan_result="queued" if async_mode else "processing",
+        scan_engine="queue" if async_mode else "pending",
+        dedupe_of_id=None,
+        processing_ms=0,
+        uploader_name=uploader_name,
+        uploader_email=uploader_email,
+        uploader_notes=uploader_notes,
+    )
+    enrich_record_from_headers(record, request, uploader_ip)
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+
+    if async_mode:
+        scan_queue.put(
+            {
+                "record_id": record.id,
+                "quarantined_path": quarantined_path,
+                "final_name": final_name,
+                "started": started,
+            }
+        )
+        return build_upload_response(record)
+
+    processed = process_record(
+        db,
+        record=record,
+        quarantined_path=quarantined_path,
+        final_name=final_name,
+        started=started,
+    )
+    return build_upload_response(processed)
+
+
+def upload_batch_response(records: list[UploadResponse], request_id: str) -> UploadBatchResponse:
+    return UploadBatchResponse(
+        request_id=request_id,
+        total_files=len(records),
+        stored=sum(1 for record in records if record.upload_status == "stored" or record.upload_status == "stored_duplicate"),
+        rejected=sum(1 for record in records if record.upload_status == "rejected"),
+        queued=sum(1 for record in records if record.upload_status == "queued"),
+        items=records,
+    )
 
 
 def query_uploads(
@@ -368,7 +478,6 @@ def index(request: Request):
         name="index.html",
         context={
             "request": request,
-            "max_file_mb": settings.max_file_size_mb,
             "service_notice": settings.service_notice,
             "admin_base_url": settings.admin_base_url,
         },
@@ -461,13 +570,15 @@ def trends(
     ]
 
 
-@app.post("/api/upload", response_model=UploadResponse)
+@app.post("/api/upload", response_model=UploadBatchResponse)
 def upload_file(
     request: Request,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
+    files: list[UploadFile] | None = File(default=None),
     consent: bool = Form(...),
     uploader_name: str | None = Form(default=None),
     uploader_email: str | None = Form(default=None),
+    uploader_notes: str | None = Form(default=None),
     db: Session = Depends(get_db),
 ):
     started = time.perf_counter()
@@ -475,8 +586,9 @@ def upload_file(
 
     if not consent:
         raise HTTPException(status_code=400, detail="Consent is required")
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
+    upload_files = normalize_upload_files(file, files)
+    if not upload_files:
+        raise HTTPException(status_code=400, detail="No files provided")
 
     uploader_ip = get_client_ip(request)
     if not limiter.allow(
@@ -486,75 +598,34 @@ def upload_file(
     ):
         raise HTTPException(status_code=429, detail="Too many uploads from this IP. Please retry shortly.")
 
-    ext = Path(file.filename).suffix.lower()
-    token = str(uuid.uuid4())
-    final_name = f"{token}{ext}"
-    quarantined_path = os.path.join(settings.quarantine_dir, final_name)
+    records: list[UploadResponse] = []
+    for upload_file in upload_files:
+        records.append(
+            store_upload_record(
+                db,
+                request=request,
+                upload_file=upload_file,
+                request_id=request_id,
+                started=started,
+                uploader_name=uploader_name,
+                uploader_email=uploader_email,
+                uploader_notes=uploader_notes,
+                async_mode=False,
+            )
+        )
 
-    try:
-        size, digest = save_stream_to_file(file, quarantined_path)
-    finally:
-        file.file.close()
-
-    if size > settings.max_file_size_mb * 1024 * 1024:
-        if os.path.exists(quarantined_path):
-            os.remove(quarantined_path)
-        raise HTTPException(status_code=413, detail=f"File exceeds {settings.max_file_size_mb} MB")
-
-    record = UploadRecord(
-        request_id=request_id,
-        original_filename=file.filename,
-        saved_filename="",
-        file_size_bytes=size,
-        mime_type=file.content_type or "application/octet-stream",
-        file_extension=ext,
-        sha256=digest,
-        upload_status="processing",
-        scan_result="processing",
-        scan_engine="pending",
-        dedupe_of_id=None,
-        processing_ms=0,
-        uploader_name=uploader_name,
-        uploader_email=uploader_email,
-    )
-    enrich_record_from_headers(record, request, uploader_ip)
-    db.add(record)
-    db.commit()
-    db.refresh(record)
-
-    processed = process_record(
-        db,
-        record=record,
-        quarantined_path=quarantined_path,
-        final_name=final_name,
-        started=started,
-    )
-
-    if processed.upload_status == "rejected":
-        raise HTTPException(status_code=400, detail=f"Upload rejected: {processed.scan_result}")
-
-    return UploadResponse(
-        id=processed.id,
-        request_id=processed.request_id,
-        original_filename=processed.original_filename,
-        sha256=processed.sha256,
-        upload_status=processed.upload_status,
-        scan_result=processed.scan_result,
-        scan_engine=processed.scan_engine,
-        dedupe_of_id=processed.dedupe_of_id,
-        file_size_bytes=processed.file_size_bytes,
-        processing_ms=processed.processing_ms,
-        created_at=processed.created_at,
-    )
+    return upload_batch_response(records, request_id)
 
 
-@app.post("/api/upload/async", response_model=UploadResponse)
+@app.post("/api/upload/async", response_model=UploadBatchResponse)
 def upload_file_async(
     request: Request,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
+    files: list[UploadFile] | None = File(default=None),
     consent: bool = Form(...),
     uploader_name: str | None = Form(default=None),
     uploader_email: str | None = Form(default=None),
+    uploader_notes: str | None = Form(default=None),
     db: Session = Depends(get_db),
 ):
     if not settings.async_scan_enabled:
@@ -565,8 +636,9 @@ def upload_file_async(
 
     if not consent:
         raise HTTPException(status_code=400, detail="Consent is required")
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="No filename provided")
+    upload_files = normalize_upload_files(file, files)
+    if not upload_files:
+        raise HTTPException(status_code=400, detail="No files provided")
 
     uploader_ip = get_client_ip(request)
     if not limiter.allow(
@@ -576,65 +648,23 @@ def upload_file_async(
     ):
         raise HTTPException(status_code=429, detail="Too many uploads from this IP. Please retry shortly.")
 
-    ext = Path(file.filename).suffix.lower()
-    token = str(uuid.uuid4())
-    final_name = f"{token}{ext}"
-    quarantined_path = os.path.join(settings.quarantine_dir, final_name)
+    records: list[UploadResponse] = []
+    for upload_file in upload_files:
+        records.append(
+            store_upload_record(
+                db,
+                request=request,
+                upload_file=upload_file,
+                request_id=request_id,
+                started=started,
+                uploader_name=uploader_name,
+                uploader_email=uploader_email,
+                uploader_notes=uploader_notes,
+                async_mode=True,
+            )
+        )
 
-    try:
-        size, digest = save_stream_to_file(file, quarantined_path)
-    finally:
-        file.file.close()
-
-    if size > settings.max_file_size_mb * 1024 * 1024:
-        if os.path.exists(quarantined_path):
-            os.remove(quarantined_path)
-        raise HTTPException(status_code=413, detail=f"File exceeds {settings.max_file_size_mb} MB")
-
-    record = UploadRecord(
-        request_id=request_id,
-        original_filename=file.filename,
-        saved_filename="",
-        file_size_bytes=size,
-        mime_type=file.content_type or "application/octet-stream",
-        file_extension=ext,
-        sha256=digest,
-        upload_status="queued",
-        scan_result="queued",
-        scan_engine="queue",
-        dedupe_of_id=None,
-        processing_ms=0,
-        uploader_name=uploader_name,
-        uploader_email=uploader_email,
-    )
-    enrich_record_from_headers(record, request, uploader_ip)
-
-    db.add(record)
-    db.commit()
-    db.refresh(record)
-
-    scan_queue.put(
-        {
-            "record_id": record.id,
-            "quarantined_path": quarantined_path,
-            "final_name": final_name,
-            "started": started,
-        }
-    )
-
-    return UploadResponse(
-        id=record.id,
-        request_id=record.request_id,
-        original_filename=record.original_filename,
-        sha256=record.sha256,
-        upload_status=record.upload_status,
-        scan_result=record.scan_result,
-        scan_engine=record.scan_engine,
-        dedupe_of_id=record.dedupe_of_id,
-        file_size_bytes=record.file_size_bytes,
-        processing_ms=record.processing_ms,
-        created_at=record.created_at,
-    )
+    return upload_batch_response(records, request_id)
 
 
 @app.get("/api/upload/{upload_id}")
@@ -728,6 +758,7 @@ def export_uploads_csv(
             "device_fingerprint",
             "uploader_name",
             "uploader_email",
+            "uploader_notes",
             "user_agent",
             "accept_language",
             "referer",

@@ -31,6 +31,7 @@ class UploadRecord(Base):
     device_fingerprint: Mapped[str] = mapped_column(String(64), nullable=True, index=True)
     uploader_name: Mapped[str] = mapped_column(String(255), nullable=True)
     uploader_email: Mapped[str] = mapped_column(String(255), nullable=True)
+    uploader_notes: Mapped[str] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

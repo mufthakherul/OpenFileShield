@@ -26,12 +26,17 @@ class ClamAVScanner:
             return False, "file_not_found"
 
         try:
-            result = self._connect().scan(file_path)
+            # With a network socket, clamd cannot read app-container file paths directly.
+            # Stream file bytes over INSTREAM so scanning works consistently in Docker.
+            with open(file_path, "rb") as file_handle:
+                result = self._connect().instream(file_handle)
             if result is None:
                 return True, "clean"
 
-            # Example result: {'/path/to/file': ('FOUND', 'Eicar-Test-Signature')}
+            # Example result: {'stream': ('FOUND', 'Eicar-Test-Signature')}
             status, signature = list(result.values())[0]
+            if status in {"OK", "CLEAN"}:
+                return True, "clean"
             if status == "FOUND":
                 return False, f"infected:{signature}"
             return False, f"scan_error:{status}"

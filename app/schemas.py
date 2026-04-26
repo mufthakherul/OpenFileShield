@@ -17,6 +17,15 @@ class UploadResponse(BaseModel):
     created_at: datetime
 
 
+class UploadBatchResponse(BaseModel):
+    request_id: str
+    total_files: int
+    stored: int
+    rejected: int
+    queued: int
+    items: list[UploadResponse]
+
+
 class HealthResponse(BaseModel):
     status: str
     scanner: str
