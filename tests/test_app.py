@@ -22,6 +22,7 @@ def configure_test_runtime(tmp_path: Path):
         "upload_dir": settings.upload_dir,
         "quarantine_dir": settings.quarantine_dir,
         "scan_required": settings.scan_required,
+        "malware_scan_enabled": settings.malware_scan_enabled,
         "async_scan_enabled": settings.async_scan_enabled,
         "app_role": settings.app_role,
         "admin_local_only": settings.admin_local_only,
@@ -31,6 +32,7 @@ def configure_test_runtime(tmp_path: Path):
     settings.upload_dir = str(tmp_path / "uploads")
     settings.quarantine_dir = str(tmp_path / "quarantine")
     settings.scan_required = False
+    settings.malware_scan_enabled = True
     settings.async_scan_enabled = False
     settings.app_role = "all"
     settings.admin_local_only = False
@@ -56,6 +58,7 @@ def configure_test_runtime(tmp_path: Path):
     settings.upload_dir = original["upload_dir"]
     settings.quarantine_dir = original["quarantine_dir"]
     settings.scan_required = original["scan_required"]
+    settings.malware_scan_enabled = original["malware_scan_enabled"]
     settings.async_scan_enabled = original["async_scan_enabled"]
     settings.app_role = original["app_role"]
     settings.admin_local_only = original["admin_local_only"]
