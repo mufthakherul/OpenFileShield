@@ -7,8 +7,13 @@ const submitBtn = document.querySelector("#submit-btn");
 const scanModeInput = document.querySelector("#scan-mode");
 
 function setFileName() {
-  const file = fileInput.files[0];
-  fileName.textContent = file ? `Selected: ${file.name}` : "";
+  const files = Array.from(fileInput.files || []);
+  if (!files.length) {
+    fileName.textContent = "";
+    return;
+  }
+  const preview = files.slice(0, 3).map((file) => file.name).join(", ");
+  fileName.textContent = files.length > 3 ? `Selected ${files.length} files: ${preview}, ...` : `Selected ${files.length} file${files.length > 1 ? "s" : ""}: ${preview}`;
 }
 
 fileInput.addEventListener("change", setFileName);
@@ -36,7 +41,10 @@ form.addEventListener("submit", async (event) => {
 
   submitBtn.disabled = true;
   submitBtn.textContent = "Scanning...";
-  result.textContent = "Uploading file to quarantine and running malware scan...";
+  const selectedCount = fileInput.files?.length || 0;
+  result.textContent = selectedCount
+    ? `Uploading ${selectedCount} file${selectedCount === 1 ? "" : "s"} to quarantine and running malware scan...`
+    : "Uploading files to quarantine and running malware scan...";
 
   const formData = new FormData(form);
   formData.set("consent", formData.get("consent") ? "true" : "false");
@@ -64,7 +72,16 @@ form.addEventListener("submit", async (event) => {
       return;
     }
 
-    result.textContent = payload ? JSON.stringify(payload, null, 2) : rawBody || "Upload completed.";
+    if (payload?.items?.length) {
+      const summary = [
+        `Batch ${payload.request_id} completed`,
+        `Stored: ${payload.stored} | Rejected: ${payload.rejected} | Queued: ${payload.queued}`,
+        ...payload.items.map((item) => `${item.original_filename}: ${item.upload_status} (${item.scan_result})`),
+      ].join("\n");
+      result.textContent = summary;
+    } else {
+      result.textContent = payload ? JSON.stringify(payload, null, 2) : rawBody || "Upload completed.";
+    }
     form.reset();
     setFileName();
   } catch (error) {

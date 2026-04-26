@@ -1,15 +1,16 @@
 :root {
-  --bg-0: #081f2d;
-  --bg-1: #0f3042;
-  --bg-2: #1d4b5d;
+  --bg-0: #07111d;
+  --bg-1: #0d2236;
+  --bg-2: #18384f;
   --surface: rgba(255, 255, 255, 0.08);
-  --surface-2: rgba(255, 255, 255, 0.12);
-  --line: rgba(255, 255, 255, 0.2);
-  --text: #f2fafc;
-  --muted: #b8cfd8;
-  --accent: #00d5aa;
-  --accent-ink: #063a31;
-  --danger: #ff9e80;
+  --surface-2: rgba(255, 255, 255, 0.13);
+  --line: rgba(255, 255, 255, 0.18);
+  --text: #eef7fb;
+  --muted: #a9c0ce;
+  --accent: #5df0c5;
+  --accent-ink: #05332b;
+  --danger: #ff9b7c;
+  --warning: #ffd27d;
 }
 
 * {
@@ -22,8 +23,9 @@ body {
   font-family: "Space Grotesk", "Segoe UI", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at 10% 10%, rgba(0, 213, 170, 0.18) 0%, transparent 40%),
-    radial-gradient(circle at 85% 15%, rgba(53, 151, 255, 0.2) 0%, transparent 42%),
+    radial-gradient(circle at 10% 10%, rgba(93, 240, 197, 0.18) 0%, transparent 38%),
+    radial-gradient(circle at 88% 16%, rgba(98, 168, 255, 0.16) 0%, transparent 40%),
+    radial-gradient(circle at 55% 90%, rgba(255, 210, 125, 0.08) 0%, transparent 42%),
     linear-gradient(160deg, var(--bg-0), var(--bg-1) 48%, var(--bg-2));
   padding: 1rem;
 }
@@ -43,6 +45,19 @@ body {
 .hero h1 {
   margin: 0;
   font-size: clamp(2rem, 5vw, 3.4rem);
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.brand-logo {
+  width: 3.75rem;
+  height: 3.75rem;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.18));
 }
 
 .eyebrow {
@@ -106,6 +121,10 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.notes-field {
+  grid-column: 1 / -1;
+}
+
 .admin-auth-row {
   grid-template-columns: 2fr auto auto;
   align-items: end;
@@ -124,6 +143,7 @@ label {
 
 input,
 select,
+textarea,
 button {
   border-radius: 10px;
   border: 1px solid var(--line);
@@ -135,6 +155,13 @@ input,
 select {
   background: rgba(6, 28, 40, 0.9);
   color: var(--text);
+}
+
+textarea {
+  background: rgba(6, 28, 40, 0.9);
+  color: var(--text);
+  resize: vertical;
+  min-height: 6.5rem;
 }
 
 .drop-zone {
@@ -163,6 +190,11 @@ select {
 .file-name {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.file-name {
+  display: block;
+  margin-top: 0.25rem;
 }
 
 .check {
@@ -258,6 +290,7 @@ button:disabled {
   display: flex;
   gap: 0.6rem;
   margin: 0.8rem 0;
+  flex-wrap: wrap;
 }
 
 .table-wrap {
@@ -277,6 +310,7 @@ td {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   padding: 0.55rem;
   text-align: left;
+  vertical-align: top;
 }
 
 th {
@@ -310,5 +344,9 @@ th {
   .admin-auth-row,
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .brand-lockup {
+    align-items: flex-start;
   }
 }

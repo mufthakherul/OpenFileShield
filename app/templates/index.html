@@ -15,15 +15,20 @@
   <body>
     <main class="shell">
       <header class="hero">
-        <p class="eyebrow">OPEN INTAKE PORTAL</p>
-        <h1>OpenFileShield</h1>
+        <div class="brand-lockup">
+          <img class="brand-logo" src="/static/logo.svg" alt="OpenFileShield logo" />
+          <div>
+            <p class="eyebrow">OPEN INTAKE PORTAL</p>
+            <h1>OpenFileShield</h1>
+          </div>
+        </div>
         <p class="subtitle">Free and public upload for all file types, with open-source malware scanning and forensic-ready audit logging.</p>
       </header>
 
       <section class="panel glass">
         <div class="meta-row">
+          <span class="chip">Unlimited batch uploads</span>
           <span class="chip">All file types supported</span>
-          <span class="chip">Max size: {{ max_file_mb }} MB</span>
           <span class="chip">No sign in required</span>
         </div>
 
@@ -40,10 +45,15 @@
             <input type="email" name="uploader_email" placeholder="you@example.com" />
           </label>
 
+          <label class="notes-field">
+            File details
+            <textarea name="uploader_notes" rows="4" placeholder="Optional context, filenames to expect, source system, or handling notes."></textarea>
+          </label>
+
           <label class="drop-zone" for="file-input" id="drop-zone">
-            <input type="file" name="file" id="file-input" required />
-            <span class="drop-title">Drop a file here or click to browse</span>
-            <span class="drop-sub">Any extension is accepted. Malware scan runs before storage.</span>
+            <input type="file" name="files" id="file-input" multiple required />
+            <span class="drop-title">Drop files here or click to browse</span>
+            <span class="drop-sub">Select one file or many. Every file is scanned before storage.</span>
             <span id="file-name" class="file-name"></span>
           </label>
 

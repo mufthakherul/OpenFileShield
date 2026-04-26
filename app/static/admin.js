@@ -132,6 +132,7 @@ function renderRows(rows) {
         <td>${row.id}</td>
         <td>${row.created_at}</td>
         <td title="${row.original_filename}">${row.original_filename}</td>
+        <td title="${row.uploader_notes || ""}">${row.uploader_notes || ""}</td>
         <td>${row.upload_status}</td>
         <td>${row.scan_result}</td>
         <td>${bytesToHuman(row.file_size_bytes)}</td>

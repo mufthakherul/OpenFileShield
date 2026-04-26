@@ -1,0 +1,23 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">OpenFileShield</title>
+  <desc id="desc">Shield and file mark for OpenFileShield.</desc>
+  <defs>
+    <linearGradient id="g1" x1="40" y1="28" x2="214" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5DF0C5"/>
+      <stop offset="1" stop-color="#5AA7FF"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="78" y1="68" x2="176" y2="188" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B2030" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#12344A" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="224" height="224" rx="56" fill="#07111D"/>
+  <path d="M128 38L198 64V120C198 163 171 196 128 216C85 196 58 163 58 120V64L128 38Z" fill="url(#g1)"/>
+  <path d="M128 52L186 73V119C186 152 166 179 128 197C90 179 70 152 70 119V73L128 52Z" fill="url(#g2)"/>
+  <path d="M108 92H148C154.627 92 160 97.3726 160 104V168C160 174.627 154.627 180 148 180H108C101.373 180 96 174.627 96 168V104C96 97.3726 101.373 92 108 92Z" fill="url(#g1)"/>
+  <path d="M116 92V80C116 73.3726 121.373 68 128 68C134.627 68 140 73.3726 140 80V92" stroke="#07111D" stroke-width="12" stroke-linecap="round"/>
+  <path d="M118 120H138" stroke="#07111D" stroke-width="12" stroke-linecap="round"/>
+  <path d="M118 144H138" stroke="#07111D" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="176" cy="186" r="18" fill="#FFD27D"/>
+  <path d="M168 186L174 192L186 180" stroke="#07111D" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
