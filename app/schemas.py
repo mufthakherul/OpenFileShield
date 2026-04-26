@@ -23,6 +23,8 @@ class UploadBatchResponse(BaseModel):
     stored: int
     rejected: int
     queued: int
+    processing: int
+    checking: int
     items: list[UploadResponse]
 
 

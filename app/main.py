@@ -301,12 +301,17 @@ def store_upload_record(
 
 
 def upload_batch_response(records: list[UploadResponse], request_id: str) -> UploadBatchResponse:
+    queued = sum(1 for record in records if record.upload_status == "queued")
+    processing = sum(1 for record in records if record.upload_status == "processing")
+    checking = queued + processing
     return UploadBatchResponse(
         request_id=request_id,
         total_files=len(records),
         stored=sum(1 for record in records if record.upload_status == "stored" or record.upload_status == "stored_duplicate"),
         rejected=sum(1 for record in records if record.upload_status == "rejected"),
-        queued=sum(1 for record in records if record.upload_status == "queued"),
+        queued=queued,
+        processing=processing,
+        checking=checking,
         items=records,
     )
 
@@ -382,8 +387,12 @@ def process_record(
         db.refresh(record)
         return record
 
-    is_clean, scan_result = scanner.scan_file(quarantined_path)
-    record.scan_engine = "clamav"
+    if settings.malware_scan_enabled:
+        is_clean, scan_result = scanner.scan_file(quarantined_path)
+        record.scan_engine = "clamav"
+    else:
+        is_clean, scan_result = True, "scan_disabled"
+        record.scan_engine = "disabled"
 
     if not is_clean and settings.scan_required:
         if os.path.exists(quarantined_path):
@@ -500,6 +509,8 @@ def admin(request: Request):
 
 @app.get("/api/health", response_model=HealthResponse)
 def health() -> HealthResponse:
+    if not settings.malware_scan_enabled:
+        return HealthResponse(status="ok", scanner="disabled")
     return HealthResponse(status="ok", scanner="up" if scanner.ping() else "down")
 
 
@@ -527,7 +538,7 @@ def stats(
         rejected=rejected,
         duplicates=duplicates,
         queued=queued,
-        scanner_up=scanner.ping(),
+        scanner_up=(not settings.malware_scan_enabled) or scanner.ping(),
     )
 
 

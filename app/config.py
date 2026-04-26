@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     allowed_file_types: str = "*"
 
     scan_required: bool = True
+    malware_scan_enabled: bool = True
     clamd_host: str = "clamav"
     clamd_port: int = 3310
 

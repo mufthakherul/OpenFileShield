@@ -73,6 +73,39 @@
           <button type="submit" id="submit-btn">Scan and Upload</button>
         </form>
 
+        <section class="upload-intel" aria-live="polite" aria-label="Upload analytics">
+          <div class="upload-progress-head">
+            <strong>Upload Progress</strong>
+            <span id="upload-progress-label">0%</span>
+          </div>
+          <div class="upload-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Upload progress">
+            <div id="upload-progress-fill" class="upload-progress-fill"></div>
+          </div>
+
+          <div class="upload-metrics-grid">
+            <article class="upload-metric success">
+              <span>Success</span>
+              <strong id="metric-success-count">0</strong>
+              <small id="metric-success-pct">0%</small>
+            </article>
+            <article class="upload-metric failed">
+              <span>Failed</span>
+              <strong id="metric-failed-count">0</strong>
+              <small id="metric-failed-pct">0%</small>
+            </article>
+            <article class="upload-metric processing">
+              <span>Processing</span>
+              <strong id="metric-processing-count">0</strong>
+              <small id="metric-processing-pct">0%</small>
+            </article>
+            <article class="upload-metric checking">
+              <span>Checking</span>
+              <strong id="metric-checking-count">0</strong>
+              <small id="metric-checking-pct">0%</small>
+            </article>
+          </div>
+        </section>
+
         <pre id="result" aria-live="polite"></pre>
       </section>
 
